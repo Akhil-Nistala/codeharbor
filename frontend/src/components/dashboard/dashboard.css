@@ -1,0 +1,62 @@
+#dashboard {
+  display: flex;
+  max-width: 1080px;
+  margin: 0 auto;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 24px;
+  color: whitesmoke;
+}
+
+#dashboard aside {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+#dashboard main {
+  flex: 1;
+}
+
+#search input {
+  width: 100%;
+  max-width: 400px;
+  height: 34px;
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0 10px;
+  color: whitesmoke;
+  margin-bottom: 16px;
+}
+
+.repo-link {
+  display: block;
+  padding: 12px;
+  border-bottom: 1px solid #21262d;
+  color: inherit;
+}
+
+.repo-link:hover {
+  background-color: #161b22;
+  text-decoration: none;
+}
+
+.repo-link h4 {
+  margin: 0 0 4px;
+  color: #58a6ff;
+}
+
+.muted {
+  color: #8b949e;
+  font-size: 14px;
+  margin: 0;
+}
+
+.badge {
+  font-size: 11px;
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  padding: 1px 8px;
+  color: #8b949e;
+  margin-left: 6px;
+}

@@ -1,0 +1,88 @@
+.create-repo-wrapper,
+.repo-detail-wrapper {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  color: whitesmoke;
+}
+
+.create-repo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 500px;
+}
+
+.input {
+  width: 100%;
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: whitesmoke;
+  font-size: 14px;
+}
+
+.textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.submit-btn {
+  background-color: #238636;
+  align-self: flex-start;
+}
+.submit-btn:hover {
+  background-color: #2ea043;
+}
+
+.repo-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.repo-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.danger {
+  border-color: #f85149;
+  color: #f85149;
+}
+
+.issue-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 500px;
+  margin-bottom: 20px;
+}
+
+.issue-list {
+  list-style: none;
+  padding: 0;
+}
+
+.issue-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #21262d;
+}
+
+.badge.open {
+  color: #3fb950;
+  border-color: #3fb950;
+}
