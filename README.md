@@ -84,6 +84,15 @@ Authorization is a separate layer on top of authentication:
 - `requireSelf(param)` — rejects with `403` unless the route param matches `req.userId`. Used on profile update/delete.
 - Issue update/delete checks are inline in `issue.controller.js` (`canModifyIssue`): the caller must be either the issue's `author` or the owner of its parent repository.
 
+Coverage across all 20 endpoints:
+
+| Protection level | Count | Endpoints |
+| --- | --- | --- |
+| Public, no auth | 6 | `signup`, `login`, `allUsers`, `userProfile/:id`, `repo/:id/issues`, `issue/:id` |
+| Requires login only (no ownership check) | 3 | `user/:id/follow`, `repo/create`, `issue/create/:id` |
+| Ownership-based authorization (403 if not owner/self/author) | 7 | `updateProfile`, `deleteProfile`, `repo/update`, `repo/delete`, `repo/toggle`, `issue/update`, `issue/delete` |
+| Visibility-filtered reads (public/private rules) | 4 | `repo/all`, `repo/:id`, `repo/name/:name`, `repo/user/:userID` |
+
 On the frontend, `withAuth()` is a route-level HOC that redirects to `/auth` if no token is present in `localStorage`. This is a UX guard only — the actual enforcement is the server-side middleware above.
 
 ### Repositories
