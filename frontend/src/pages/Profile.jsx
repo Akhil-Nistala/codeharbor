@@ -35,7 +35,7 @@ function Profile() {
     if (!profileId) return;
     loadProfile();
     apiClient
-      .get(`/repo/user/${profileId}`)
+      .get(`/repos/user/${profileId}`)
       .then((res) => setRepositories(res.data.repositories ?? []))
       .catch(() => setRepositories([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
