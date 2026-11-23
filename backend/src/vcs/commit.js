@@ -9,15 +9,17 @@ async function commitRepo(message) {
   const commitPath = path.join(repoPath, "commits");
 
   try {
-    const commitID = uuidv4();
-    const commitDir = path.join(commitPath, commitID);
-    await fs.mkdir(commitDir, { recursive: true });
-
+    // Check for staged files before creating anything, so an empty commit
+    // doesn't leave an empty folder behind.
     const files = await fs.readdir(stagedPath).catch(() => []);
     if (files.length === 0) {
       console.log("Nothing staged to commit — use `add <file>` first.");
       return;
     }
+
+    const commitID = uuidv4();
+    const commitDir = path.join(commitPath, commitID);
+    await fs.mkdir(commitDir, { recursive: true });
 
     for (const file of files) {
       await fs.copyFile(path.join(stagedPath, file), path.join(commitDir, file));
@@ -27,6 +29,10 @@ async function commitRepo(message) {
       path.join(commitDir, "commit.json"),
       JSON.stringify({ message, date: new Date().toISOString() }, null, 2)
     );
+
+    // Clear the staging area, like Git: the next commit only contains
+    // files added after this one.
+    await Promise.all(files.map((file) => fs.rm(path.join(stagedPath, file))));
 
     console.log(`Commit ${commitID} created: ${message}`);
   } catch (err) {
