@@ -1,9 +1,7 @@
 import "dotenv/config";
-import { createServer } from "node:http";
 
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
-import { connectToSocket } from "./controllers/socketManager.js";
 
 const PORT = process.env.PORT || 3002;
 
@@ -15,10 +13,7 @@ const start = async () => {
   const host = await connectDB(process.env.MONGO_URI);
   console.log(`MongoDB connected: ${host}`);
 
-  const server = createServer(app);
-  connectToSocket(server);
-
-  server.listen(PORT, () => {
+  app.listen(PORT, () => {
     console.log(`CodeHarbor server listening on port ${PORT}`);
   });
 };

@@ -30,7 +30,7 @@ codeharbor/
 │   ├── jest.config.cjs
 │   ├── src/
 │   │   ├── app.js                        # Express app (middleware + routes), exported — no listen()
-│   │   ├── server.js                     # entry point: connects Mongo, boots Express + Socket.IO, listens
+│   │   ├── server.js                     # entry point: connects Mongo, starts Express
 │   │   ├── cli.js                        # entry point for the `codeharbor` VCS CLI (yargs)
 │   │   ├── config/
 │   │   │   ├── db.js                     # mongoose.connect wrapper
@@ -39,8 +39,7 @@ codeharbor/
 │   │   │   ├── auth.controller.js        # signup / login
 │   │   │   ├── user.controller.js        # profile reads + CRUD / follow toggle
 │   │   │   ├── repo.controller.js        # repository CRUD + visibility
-│   │   │   ├── issue.controller.js       # issue CRUD, scoped to a repository
-│   │   │   └── socketManager.js          # Socket.IO setup (reserved, see below)
+│   │   │   └── issue.controller.js       # issue CRUD, scoped to a repository
 │   │   ├── middleware/
 │   │   │   ├── auth.middleware.js        # requireAuth (hard 401) + optionalAuth (soft)
 │   │   │   ├── authorize.middleware.js   # requireRepoOwner, requireSelf
@@ -155,10 +154,6 @@ Issues are created and listed under their repository (`POST`/`GET /api/v1/repos/
 
 This CLI operates entirely on the local filesystem (and optionally S3) and is independent of the web API's MongoDB-backed `Repository` documents.
 
-### Real-time (reserved)
-
-`controllers/socketManager.js` starts a Socket.IO server and accepts a `joinRoom` event (joins a room keyed by user id). No events are currently emitted into those rooms — this is infrastructure for future features (e.g. notifying a repo owner when an issue is opened), not part of the active request flow.
-
 ## Backend API contract
 
 All endpoints are under `/api/v1`. `GET /health` (outside the prefix) is the health check. Errors are always `{ success: false, message, errors? }`.
@@ -252,5 +247,4 @@ The frontend has no unit tests; `npm run build` and `npm run lint` in `frontend/
 - **The CLI and the web app are independent.** CLI commits are local file snapshots (optionally synced to S3); they are not linked to a `Repository` document in MongoDB. There is no current path from "I ran `codeharbor commit`" to "this shows up on my CodeHarbor repo page."
 - **Commits are whole-file copies, not a content-addressed object store.** There is no diffing, no tree/blob model, and no branching — the CLI demonstrates version-control ergonomics rather than implementing Git's data model.
 - **The contribution heatmap is illustrative.** There is no activity-tracking pipeline; it renders randomly generated data over a real rolling 12-month window rather than a user's actual history.
-- **Socket.IO has no active consumers yet** (see [Real-time (reserved)](#real-time-reserved)).
 - **Tests mock the database.** Integration tests against a real MongoDB (e.g. `mongodb-memory-server` in CI) would catch query-level bugs the mocked suite can't.
