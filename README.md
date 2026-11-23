@@ -1,6 +1,6 @@
 # CodeHarbor
 
-A code-hosting platform: users sign up, create public or private repositories, open and manage issues, follow other users, and browse profiles with an activity heatmap. It also ships a standalone CLI (`codeharbor init/add/commit/push/pull/revert`) that simulates local version control and can sync commit snapshots to an S3 bucket.
+A code-hosting platform: users sign up, create public or private repositories, open and manage issues, follow other users, and browse profiles with an activity heatmap. It also ships a standalone CLI (`codeharbor init/add/commit/push/pull/revert`) that simulates local version control and can sync commit snapshots to a S3 bucket.
 
 This README documents the system's architecture and contracts so it can be understood without reading the source first.
 
