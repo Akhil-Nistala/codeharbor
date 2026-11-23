@@ -1,7 +1,6 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose, { Schema } from "mongoose";
 
-const IssueSchema = new Schema(
+const issueSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
@@ -12,6 +11,4 @@ const IssueSchema = new Schema(
   { timestamps: true }
 );
 
-const Issue = mongoose.model("Issue", IssueSchema);
-
-module.exports = Issue;
+export const Issue = mongoose.model("Issue", issueSchema);

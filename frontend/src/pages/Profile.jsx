@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import Navbar from "../Navbar";
-import HeatMapProfile from "./HeatMap";
-import withAuth from "../../utils/withAuth";
-import { apiClient, useAuth } from "../../context/AuthContext";
-import "./profile.css";
+import Navbar from "../components/Navbar";
+import HeatMapProfile from "../components/HeatMap";
+import withAuth from "../utils/withAuth";
+import { apiClient, useAuth } from "../context/AuthContext";
+import "../styles/profile.css";
 
 function Profile() {
   const { id } = useParams();
@@ -18,12 +18,12 @@ function Profile() {
 
   const loadProfile = async () => {
     try {
-      const res = await apiClient.get(`/userProfile/${profileId}`);
+      const res = await apiClient.get(`/users/${profileId}`);
       setUserDetails(res.data);
 
       if (!isOwnProfile) {
         // "Am I following them" depends on MY followedUsers list, not theirs.
-        const me = await apiClient.get(`/userProfile/${currentUser}`);
+        const me = await apiClient.get(`/users/${currentUser}`);
         setIsFollowing(me.data.followedUsers?.some((followedId) => followedId === profileId) ?? false);
       }
     } catch (err) {
@@ -42,7 +42,7 @@ function Profile() {
   }, [profileId]);
 
   const handleFollowToggle = async () => {
-    const res = await apiClient.patch(`/user/${profileId}/follow`);
+    const res = await apiClient.patch(`/users/${profileId}/follow`);
     setIsFollowing(res.data.following);
   };
 

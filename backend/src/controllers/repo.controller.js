@@ -1,17 +1,13 @@
-const mongoose = require("mongoose");
-const Repository = require("../models/repo.model");
+import { Repository } from "../models/repo.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-function visibleTo(userId) {
-  // Public repos are visible to everyone; private repos only to their owner.
-  return userId ? { $or: [{ visibility: true }, { owner: userId }] } : { visibility: true };
-}
+// Public repos are visible to everyone; private repos only to their owner.
+const visibleTo = (userId) =>
+  userId ? { $or: [{ visibility: true }, { owner: userId }] } : { visibility: true };
 
-async function createRepository(req, res) {
+const createRepository = asyncHandler(async (req, res) => {
   const { name, description, visibility, content } = req.body;
-
-  if (!name) {
-    return res.status(400).json({ error: "Repository name is required" });
-  }
 
   try {
     const repository = await Repository.create({
@@ -22,129 +18,89 @@ async function createRepository(req, res) {
       owner: req.userId
     });
 
-    res.status(201).json({ message: "Repository created", repositoryID: repository._id });
+    res.status(201).json({ success: true, message: "Repository created", repositoryID: repository._id });
   } catch (err) {
+    // The { owner, name } unique index is the source of truth, so two
+    // concurrent creates can't both succeed.
     if (err.code === 11000) {
-      return res.status(409).json({ error: "You already have a repository with that name" });
+      throw new ApiError(409, "You already have a repository with that name");
     }
-    console.error("Error creating repository:", err.message);
-    res.status(500).json({ error: "Server error" });
+    throw err;
   }
-}
+});
 
-async function getAllRepositories(req, res) {
-  try {
-    const repositories = await Repository.find(visibleTo(req.userId))
-      .populate("owner", "username")
-      .sort({ createdAt: -1 });
+const getAllRepositories = asyncHandler(async (req, res) => {
+  const repositories = await Repository.find(visibleTo(req.userId))
+    .populate("owner", "username")
+    .sort({ createdAt: -1 });
 
-    res.json(repositories);
-  } catch (err) {
-    console.error("Error fetching repositories:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
+  res.status(200).json(repositories);
+});
 
-async function fetchRepositoryById(req, res) {
-  const { id } = req.params;
+const fetchRepositoryById = asyncHandler(async (req, res) => {
+  const repository = await Repository.findOne({ _id: req.params.id, ...visibleTo(req.userId) })
+    .populate("owner", "username")
+    .populate("issues");
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ error: "Invalid repository id" });
+  // A private repo you don't own gets the same 404 as one that doesn't exist.
+  if (!repository) {
+    throw new ApiError(404, "Repository not found");
   }
 
-  try {
-    const repository = await Repository.findOne({ _id: id, ...visibleTo(req.userId) })
-      .populate("owner", "username")
-      .populate("issues");
+  res.status(200).json(repository);
+});
 
-    if (!repository) {
-      return res.status(404).json({ error: "Repository not found" });
-    }
+const fetchRepositoryByName = asyncHandler(async (req, res) => {
+  const repositories = await Repository.find({ name: req.params.name, ...visibleTo(req.userId) })
+    .populate("owner", "username")
+    .populate("issues");
 
-    res.json(repository);
-  } catch (err) {
-    console.error("Error fetching repository:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
+  res.status(200).json(repositories);
+});
 
-async function fetchRepositoryByName(req, res) {
-  const { name } = req.params;
+const fetchRepositoriesForUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
 
-  try {
-    const repositories = await Repository.find({ name, ...visibleTo(req.userId) })
-      .populate("owner", "username")
-      .populate("issues");
+  const repositories = await Repository.find({
+    owner: userId,
+    ...(userId === req.userId ? {} : { visibility: true })
+  }).sort({ createdAt: -1 });
 
-    res.json(repositories);
-  } catch (err) {
-    console.error("Error fetching repository:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
+  res.status(200).json({ repositories });
+});
 
-async function fetchRepositoriesForCurrentUser(req, res) {
-  const { userID } = req.params;
-
-  try {
-    const repositories = await Repository.find({
-      owner: userID,
-      ...(userID === req.userId ? {} : { visibility: true })
-    }).sort({ createdAt: -1 });
-
-    res.json({ repositories });
-  } catch (err) {
-    console.error("Error fetching user repositories:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
-
-async function updateRepositoryById(req, res) {
+// req.repository is loaded and ownership-checked by requireRepoOwner.
+const updateRepositoryById = asyncHandler(async (req, res) => {
   const { content, description } = req.body;
-  const repository = req.repository; // set by requireRepoOwner
+  const { repository } = req;
 
-  try {
-    if (content !== undefined) repository.content.push(content);
-    if (description !== undefined) repository.description = description;
+  if (content !== undefined) repository.content.push(content);
+  if (description !== undefined) repository.description = description;
 
-    const updated = await repository.save();
-    res.json({ message: "Repository updated", repository: updated });
-  } catch (err) {
-    console.error("Error updating repository:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
+  const updated = await repository.save();
+  res.status(200).json({ success: true, message: "Repository updated", repository: updated });
+});
 
-async function toggleVisibilityById(req, res) {
-  const repository = req.repository;
+const toggleVisibilityById = asyncHandler(async (req, res) => {
+  const { repository } = req;
 
-  try {
-    repository.visibility = !repository.visibility;
-    const updated = await repository.save();
-    res.json({ message: "Repository visibility toggled", repository: updated });
-  } catch (err) {
-    console.error("Error toggling visibility:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
+  repository.visibility = !repository.visibility;
+  const updated = await repository.save();
+  res.status(200).json({ success: true, message: "Repository visibility toggled", repository: updated });
+});
 
-async function deleteRepositoryById(req, res) {
-  try {
-    await req.repository.deleteOne();
-    res.json({ message: "Repository deleted" });
-  } catch (err) {
-    console.error("Error deleting repository:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-}
+const deleteRepositoryById = asyncHandler(async (req, res) => {
+  await req.repository.deleteOne();
+  res.status(200).json({ success: true, message: "Repository deleted" });
+});
 
-module.exports = {
+export {
   createRepository,
-  getAllRepositories,
+  deleteRepositoryById,
+  fetchRepositoriesForUser,
   fetchRepositoryById,
   fetchRepositoryByName,
-  fetchRepositoriesForCurrentUser,
-  updateRepositoryById,
+  getAllRepositories,
   toggleVisibilityById,
-  deleteRepositoryById
+  updateRepositoryById
 };

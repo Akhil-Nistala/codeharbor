@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../Navbar";
-import withAuth from "../../utils/withAuth";
-import { apiClient } from "../../context/AuthContext";
-import "./dashboard.css";
+import Navbar from "../components/Navbar";
+import withAuth from "../utils/withAuth";
+import { apiClient } from "../context/AuthContext";
+import "../styles/dashboard.css";
 
 function Dashboard() {
   const [repositories, setRepositories] = useState([]);
@@ -16,7 +16,7 @@ function Dashboard() {
 
     const fetchRepositories = async () => {
       try {
-        const response = await apiClient.get(`/repo/user/${userId}`);
+        const response = await apiClient.get(`/repos/user/${userId}`);
         setRepositories(response.data.repositories ?? []);
       } catch (err) {
         console.error("Error fetching repositories:", err);
@@ -25,7 +25,7 @@ function Dashboard() {
 
     const fetchSuggestedRepositories = async () => {
       try {
-        const response = await apiClient.get(`/repo/all`);
+        const response = await apiClient.get("/repos");
         setSuggestedRepositories(response.data ?? []);
       } catch (err) {
         console.error("Error fetching repositories:", err);

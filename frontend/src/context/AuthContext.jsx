@@ -7,7 +7,7 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
-const client = axios.create({ baseURL: apiBaseUrl });
+const client = axios.create({ baseURL: `${apiBaseUrl}/api/v1` });
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -17,6 +17,10 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// A 401 from these means bad credentials, not an expired session, so it
+// should surface as a form error instead of logging the user out.
+const AUTH_PATHS = ["/auth/login", "/auth/signup"];
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem("userId"));
   const navigate = useNavigate();
@@ -25,7 +29,7 @@ export const AuthProvider = ({ children }) => {
     const interceptorId = client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && !AUTH_PATHS.includes(error.config?.url)) {
           localStorage.removeItem("token");
           localStorage.removeItem("userId");
           setCurrentUser(null);
@@ -38,18 +42,20 @@ export const AuthProvider = ({ children }) => {
     return () => client.interceptors.response.eject(interceptorId);
   }, [navigate]);
 
+  const storeSession = ({ token, userId }) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("userId", userId);
+    setCurrentUser(userId);
+  };
+
   const handleSignup = async (username, email, password) => {
-    const res = await client.post("/signup", { username, email, password });
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("userId", res.data.userId);
-    setCurrentUser(res.data.userId);
+    const res = await client.post("/auth/signup", { username, email, password });
+    storeSession(res.data);
   };
 
   const handleLogin = async (email, password) => {
-    const res = await client.post("/login", { email, password });
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("userId", res.data.userId);
-    setCurrentUser(res.data.userId);
+    const res = await client.post("/auth/login", { email, password });
+    storeSession(res.data);
   };
 
   const handleLogout = () => {

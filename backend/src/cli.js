@@ -1,13 +1,13 @@
-require("dotenv").config();
-const yargs = require("yargs");
-const { hideBin } = require("yargs/helpers");
+import "dotenv/config";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
-const { initRepo } = require("./vcs/init");
-const { addRepo } = require("./vcs/add");
-const { commitRepo } = require("./vcs/commit");
-const { pushRepo } = require("./vcs/push");
-const { pullRepo } = require("./vcs/pull");
-const { revertRepo } = require("./vcs/revert");
+import { initRepo } from "./vcs/init.js";
+import { addRepo } from "./vcs/add.js";
+import { commitRepo } from "./vcs/commit.js";
+import { pushRepo } from "./vcs/push.js";
+import { pullRepo } from "./vcs/pull.js";
+import { revertRepo } from "./vcs/revert.js";
 
 yargs(hideBin(process.argv))
   .scriptName("codeharbor")

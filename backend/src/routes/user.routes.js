@@ -1,16 +1,25 @@
-const express = require("express");
-const userController = require("../controllers/user.controller");
-const { requireAuth } = require("../middleware/auth.middleware");
-const { requireSelf } = require("../middleware/authorize.middleware");
+import { Router } from "express";
 
-const router = express.Router();
+import {
+  deleteUserProfile,
+  getAllUsers,
+  getUserProfile,
+  toggleFollow,
+  updateUserProfile
+} from "../controllers/user.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireSelf } from "../middleware/authorize.middleware.js";
+import { requireObjectId } from "../middleware/objectId.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
+import { updateProfileSchema } from "../validators/user.validator.js";
 
-router.get("/allUsers", userController.getAllUsers);
-router.post("/signup", userController.signup);
-router.post("/login", userController.login);
-router.get("/userProfile/:id", userController.getUserProfile);
-router.put("/updateProfile/:id", requireAuth, requireSelf("id"), userController.updateUserProfile);
-router.delete("/deleteProfile/:id", requireAuth, requireSelf("id"), userController.deleteUserProfile);
-router.patch("/user/:id/follow", requireAuth, userController.toggleFollow);
+const router = Router();
+const userId = requireObjectId("id", "user id");
 
-module.exports = router;
+router.get("/", getAllUsers);
+router.get("/:id", userId, getUserProfile);
+router.put("/:id", requireAuth, userId, requireSelf("id"), validate(updateProfileSchema), updateUserProfile);
+router.delete("/:id", requireAuth, userId, requireSelf("id"), deleteUserProfile);
+router.patch("/:id/follow", requireAuth, userId, toggleFollow);
+
+export default router;

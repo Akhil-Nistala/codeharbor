@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import Navbar from "../Navbar";
-import withAuth from "../../utils/withAuth";
-import { apiClient } from "../../context/AuthContext";
-import "./repo.css";
+import Navbar from "../components/Navbar";
+import withAuth from "../utils/withAuth";
+import { apiClient } from "../context/AuthContext";
+import "../styles/repo.css";
 
 function RepositoryDetail() {
   const { id } = useParams();
@@ -19,7 +19,7 @@ function RepositoryDetail() {
 
   const loadRepository = async () => {
     try {
-      const res = await apiClient.get(`/repo/${id}`);
+      const res = await apiClient.get(`/repos/${id}`);
       setRepository(res.data);
     } catch {
       setNotFound(true);
@@ -28,7 +28,7 @@ function RepositoryDetail() {
 
   const loadIssues = async () => {
     try {
-      const res = await apiClient.get(`/repo/${id}/issues`);
+      const res = await apiClient.get(`/repos/${id}/issues`);
       setIssues(res.data);
     } catch (err) {
       console.error("Error fetching issues:", err);
@@ -46,7 +46,7 @@ function RepositoryDetail() {
   const handleToggleVisibility = async () => {
     setBusy(true);
     try {
-      await apiClient.patch(`/repo/toggle/${id}`);
+      await apiClient.patch(`/repos/${id}/visibility`);
       await loadRepository();
     } finally {
       setBusy(false);
@@ -57,7 +57,7 @@ function RepositoryDetail() {
     if (!window.confirm("Delete this repository? This can't be undone.")) return;
     setBusy(true);
     try {
-      await apiClient.delete(`/repo/delete/${id}`);
+      await apiClient.delete(`/repos/${id}`);
       navigate("/");
     } finally {
       setBusy(false);
@@ -69,7 +69,7 @@ function RepositoryDetail() {
     if (!issueTitle.trim() || !issueDescription.trim()) return;
     setBusy(true);
     try {
-      await apiClient.post(`/issue/create/${id}`, { title: issueTitle, description: issueDescription });
+      await apiClient.post(`/repos/${id}/issues`, { title: issueTitle, description: issueDescription });
       setIssueTitle("");
       setIssueDescription("");
       await loadIssues();
@@ -79,7 +79,7 @@ function RepositoryDetail() {
   };
 
   const handleCloseIssue = async (issueId, status) => {
-    await apiClient.put(`/issue/update/${issueId}`, { status: status === "open" ? "closed" : "open" });
+    await apiClient.put(`/issues/${issueId}`, { status: status === "open" ? "closed" : "open" });
     await loadIssues();
   };
 

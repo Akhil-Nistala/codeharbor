@@ -1,8 +1,8 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { ListObjectsV2Command, GetObjectCommand } = require("@aws-sdk/client-s3");
-const { getS3Client } = require("../config/s3");
-const { REPO_DIR } = require("./init");
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getS3Client } from "../config/s3.js";
+import { REPO_DIR } from "./init.js";
 
 async function pullRepo() {
   const repoPath = path.resolve(process.cwd(), REPO_DIR);
@@ -28,4 +28,4 @@ async function pullRepo() {
   }
 }
 
-module.exports = { pullRepo };
+export { pullRepo };

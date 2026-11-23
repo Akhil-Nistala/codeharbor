@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../Navbar";
-import withAuth from "../../utils/withAuth";
-import { apiClient } from "../../context/AuthContext";
-import "./repo.css";
+import Navbar from "../components/Navbar";
+import withAuth from "../utils/withAuth";
+import { apiClient } from "../context/AuthContext";
+import errorMessage from "../utils/errorMessage";
+import "../styles/repo.css";
 
 function CreateRepository() {
   const [name, setName] = useState("");
@@ -18,10 +19,10 @@ function CreateRepository() {
     setError("");
     setLoading(true);
     try {
-      const res = await apiClient.post("/repo/create", { name, description, visibility });
+      const res = await apiClient.post("/repos", { name, description, visibility });
       navigate(`/repo/${res.data.repositoryID}`);
     } catch (err) {
-      setError(err?.response?.data?.error ?? "Could not create repository");
+      setError(errorMessage(err, "Could not create repository"));
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { v4: uuidv4 } = require("uuid");
-const { REPO_DIR } = require("./init");
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { v4 as uuidv4 } from "uuid";
+import { REPO_DIR } from "./init.js";
 
 async function commitRepo(message) {
   const repoPath = path.resolve(process.cwd(), REPO_DIR);
@@ -34,4 +34,4 @@ async function commitRepo(message) {
   }
 }
 
-module.exports = { commitRepo };
+export { commitRepo };

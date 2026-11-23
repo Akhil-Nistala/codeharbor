@@ -1,36 +1,27 @@
-require("dotenv").config();
-const { createServer } = require("node:http");
-const { Server } = require("socket.io");
+import "dotenv/config";
+import { createServer } from "node:http";
 
-const app = require("./app");
-const { connectDB } = require("./config/db");
+import app from "./app.js";
+import { connectDB } from "./config/db.js";
+import { connectToSocket } from "./controllers/socketManager.js";
 
 const PORT = process.env.PORT || 3002;
 
-async function start() {
+const start = async () => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not set. Copy .env.example to .env and fill it in.");
   }
 
-  const host = await connectDB(process.env.MONGODB_URI);
+  const host = await connectDB(process.env.MONGO_URI);
   console.log(`MongoDB connected: ${host}`);
 
-  const httpServer = createServer(app);
+  const server = createServer(app);
+  connectToSocket(server);
 
-  // Reserved for real-time notifications (e.g. "new issue opened on your
-  // repo") — wired up but not yet driving any UI. Documented in the README
-  // as a known stub rather than left unexplained.
-  const io = new Server(httpServer, {
-    cors: { origin: process.env.CLIENT_ORIGIN || "*", methods: ["GET", "POST"] }
-  });
-  io.on("connection", (socket) => {
-    socket.on("joinRoom", (userId) => socket.join(userId));
-  });
-
-  httpServer.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`CodeHarbor server listening on port ${PORT}`);
   });
-}
+};
 
 start().catch((err) => {
   console.error("Failed to start server:", err.message);

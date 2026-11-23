@@ -1,5 +1,5 @@
-const fs = require("fs").promises;
-const path = require("path");
+import { promises as fs } from "node:fs";
+import path from "node:path";
 
 const REPO_DIR = ".codeharbor";
 
@@ -20,4 +20,4 @@ async function initRepo() {
   }
 }
 
-module.exports = { initRepo, REPO_DIR };
+export { initRepo, REPO_DIR };

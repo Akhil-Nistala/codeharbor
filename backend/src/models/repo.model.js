@@ -1,7 +1,6 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose, { Schema } from "mongoose";
 
-const RepositorySchema = new Schema(
+const repositorySchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     description: { type: String },
@@ -15,8 +14,6 @@ const RepositorySchema = new Schema(
 
 // A repo name only needs to be unique per owner (like GitHub) — two
 // different users can both have a repo named "notes".
-RepositorySchema.index({ owner: 1, name: 1 }, { unique: true });
+repositorySchema.index({ owner: 1, name: 1 }, { unique: true });
 
-const Repository = mongoose.model("Repository", RepositorySchema);
-
-module.exports = Repository;
+export const Repository = mongoose.model("Repository", repositorySchema);

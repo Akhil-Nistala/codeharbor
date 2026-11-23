@@ -1,161 +1,73 @@
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
-const User = require("../models/user.model");
+import bcrypt from "bcryptjs";
 
-function signToken(user) {
-  return jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: "7d" });
-}
+import { User } from "../models/user.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-async function signup(req, res) {
-  const { username, email, password } = req.body;
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({}, "username email createdAt");
+  res.status(200).json(users);
+});
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: "username, email and password are required" });
+const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
 
-  try {
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) {
-      return res.status(409).json({ message: "Username or email already in use" });
-    }
+  res.status(200).json(user);
+});
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hashedPassword });
-
-    res.status(201).json({ token: signToken(user), userId: user._id });
-  } catch (err) {
-    console.error("Error during signup:", err.message);
-    res.status(500).json({ message: "Server error" });
-  }
-}
-
-async function login(req, res) {
+const updateUserProfile = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  try {
-    const user = await User.findOne({ email }).select("+password");
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+  const updateFields = {};
+  if (email) updateFields.email = email;
+  if (password) updateFields.password = await bcrypt.hash(password, 10);
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    res.json({ token: signToken(user), userId: user._id });
-  } catch (err) {
-    console.error("Error during login:", err.message);
-    res.status(500).json({ message: "Server error" });
+  const user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true });
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
-}
 
-async function getAllUsers(req, res) {
-  try {
-    const users = await User.find({}, "username email createdAt");
-    res.json(users);
-  } catch (err) {
-    console.error("Error fetching users:", err.message);
-    res.status(500).json({ message: "Server error" });
+  res.status(200).json(user);
+});
+
+const deleteUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findByIdAndDelete(req.params.id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
-}
 
-async function getUserProfile(req, res) {
+  res.status(200).json({ success: true, message: "User profile deleted" });
+});
+
+// Toggles :id in the *caller's* followedUsers list.
+const toggleFollow = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "Invalid user id" });
-  }
-
-  try {
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json(user);
-  } catch (err) {
-    console.error("Error fetching user:", err.message);
-    res.status(500).json({ message: "Server error" });
-  }
-}
-
-async function updateUserProfile(req, res) {
-  const { id } = req.params;
-  const { email, password } = req.body;
-
-  try {
-    const updateFields = {};
-    if (email) updateFields.email = email;
-    if (password) updateFields.password = await bcrypt.hash(password, 10);
-
-    const user = await User.findByIdAndUpdate(id, updateFields, { new: true });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json(user);
-  } catch (err) {
-    console.error("Error updating user:", err.message);
-    res.status(500).json({ message: "Server error" });
-  }
-}
-
-async function deleteUserProfile(req, res) {
-  const { id } = req.params;
-
-  try {
-    const user = await User.findByIdAndDelete(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json({ message: "User profile deleted" });
-  } catch (err) {
-    console.error("Error deleting user:", err.message);
-    res.status(500).json({ message: "Server error" });
-  }
-}
-
-async function toggleFollow(req, res) {
-  const { id } = req.params; // the user being followed/unfollowed
 
   if (id === req.userId) {
-    return res.status(400).json({ message: "You can't follow yourself" });
-  }
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "Invalid user id" });
+    throw new ApiError(400, "You can't follow yourself");
   }
 
-  try {
-    const [me, target] = await Promise.all([User.findById(req.userId), User.findById(id)]);
-    if (!target) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const alreadyFollowing = me.followedUsers.some((userId) => userId.toString() === id);
-
-    if (alreadyFollowing) {
-      me.followedUsers = me.followedUsers.filter((userId) => userId.toString() !== id);
-    } else {
-      me.followedUsers.push(id);
-    }
-
-    await me.save();
-    res.json({ following: !alreadyFollowing, followedUsers: me.followedUsers });
-  } catch (err) {
-    console.error("Error toggling follow:", err.message);
-    res.status(500).json({ message: "Server error" });
+  const [me, target] = await Promise.all([User.findById(req.userId), User.findById(id)]);
+  if (!me) {
+    throw new ApiError(401, "Your account no longer exists");
   }
-}
+  if (!target) {
+    throw new ApiError(404, "User not found");
+  }
 
-module.exports = {
-  signup,
-  login,
-  getAllUsers,
-  getUserProfile,
-  updateUserProfile,
-  deleteUserProfile,
-  toggleFollow
-};
+  const alreadyFollowing = me.followedUsers.some((userId) => userId.toString() === id);
+
+  if (alreadyFollowing) {
+    me.followedUsers = me.followedUsers.filter((userId) => userId.toString() !== id);
+  } else {
+    me.followedUsers.push(id);
+  }
+
+  await me.save();
+  res.status(200).json({ following: !alreadyFollowing, followedUsers: me.followedUsers });
+});
+
+export { deleteUserProfile, getAllUsers, getUserProfile, toggleFollow, updateUserProfile };

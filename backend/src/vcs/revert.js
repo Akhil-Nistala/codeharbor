@@ -1,6 +1,6 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { REPO_DIR } = require("./init");
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { REPO_DIR } from "./init.js";
 
 async function revertRepo(commitID) {
   const repoPath = path.resolve(process.cwd(), REPO_DIR);
@@ -24,4 +24,4 @@ async function revertRepo(commitID) {
   }
 }
 
-module.exports = { revertRepo };
+export { revertRepo };

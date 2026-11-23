@@ -1,11 +1,11 @@
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import Dashboard from "./components/dashboard/Dashboard";
-import Login from "./components/auth/Login";
-import Signup from "./components/auth/Signup";
-import Profile from "./components/user/Profile";
-import CreateRepository from "./components/repo/CreateRepository";
-import RepositoryDetail from "./components/repo/RepositoryDetail";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Profile from "./pages/Profile";
+import CreateRepository from "./pages/CreateRepository";
+import RepositoryDetail from "./pages/RepositoryDetail";
 import "./App.css";
 
 function App() {

@@ -1,13 +1,18 @@
-const express = require("express");
-const issueController = require("../controllers/issue.controller");
-const { requireAuth } = require("../middleware/auth.middleware");
+import { Router } from "express";
 
-const router = express.Router();
+import { deleteIssueById, getIssueById, updateIssueById } from "../controllers/issue.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireObjectId } from "../middleware/objectId.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
+import { updateIssueSchema } from "../validators/issue.validator.js";
 
-router.post("/issue/create/:id", requireAuth, issueController.createIssue);
-router.put("/issue/update/:id", requireAuth, issueController.updateIssueById);
-router.delete("/issue/delete/:id", requireAuth, issueController.deleteIssueById);
-router.get("/repo/:id/issues", issueController.getAllIssues);
-router.get("/issue/:id", issueController.getIssueById);
+// Issues are created and listed under their repository (see repo.routes.js);
+// these routes address a single issue directly.
+const router = Router();
+const issueId = requireObjectId("id", "issue id");
 
-module.exports = router;
+router.get("/:id", issueId, getIssueById);
+router.put("/:id", requireAuth, issueId, validate(updateIssueSchema), updateIssueById);
+router.delete("/:id", requireAuth, issueId, deleteIssueById);
+
+export default router;

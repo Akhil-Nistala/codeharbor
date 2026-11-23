@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import "./auth.css";
+import { useAuth } from "../context/AuthContext";
+import errorMessage from "../utils/errorMessage";
+import "../styles/auth.css";
 import logo from "/favicon.svg";
 
-const Login = () => {
+const Signup = () => {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { currentUser, handleLogin } = useAuth();
+  const { currentUser, handleSignup } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,10 +23,10 @@ const Login = () => {
     setError("");
     setLoading(true);
     try {
-      await handleLogin(email, password);
+      await handleSignup(username, email, password);
       navigate("/");
     } catch (err) {
-      setError(err?.response?.data?.message ?? "Login failed");
+      setError(errorMessage(err, "Signup failed"));
     } finally {
       setLoading(false);
     }
@@ -38,9 +40,21 @@ const Login = () => {
 
       <div className="login-box-wrapper">
         <div className="login-heading">
-          <h2>Sign In</h2>
+          <h2>Sign Up</h2>
         </div>
+
         <form className="login-box" onSubmit={onSubmit}>
+          <div>
+            <label className="label">Username</label>
+            <input
+              autoComplete="off"
+              className="input"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+
           <div>
             <label className="label">Email address</label>
             <input
@@ -51,6 +65,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+
           <div className="div">
             <label className="label">Password</label>
             <input
@@ -65,12 +80,13 @@ const Login = () => {
           {error && <p style={{ color: "#f85149" }}>{error}</p>}
 
           <button type="submit" className="submit-btn login-btn" disabled={loading}>
-            {loading ? "Loading..." : "Login"}
+            {loading ? "Loading..." : "Signup"}
           </button>
         </form>
+
         <div className="pass-box">
           <p>
-            New to CodeHarbor? <Link to="/signup">Create an account</Link>
+            Already have an account? <Link to="/auth">Login</Link>
           </p>
         </div>
       </div>
@@ -78,4 +94,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;

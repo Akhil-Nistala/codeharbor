@@ -26,3 +26,7 @@ dist-ssr
 
 # Local metadata created by the `codeharbor` CLI (init/add/commit)
 .codeharbor/
+
+# Personal notes (kept locally, not published)
+INTERVIEW_PREP.md
+PROJECT_EXPLAINED.md
