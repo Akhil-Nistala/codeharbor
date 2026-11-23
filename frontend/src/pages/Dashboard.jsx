@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import withAuth from "../utils/withAuth";
-import { apiClient } from "../context/AuthContext";
+import apiClient from "../api/client";
 import "../styles/dashboard.css";
 
 function Dashboard() {
   const [repositories, setRepositories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestedRepositories, setSuggestedRepositories] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
@@ -36,15 +34,9 @@ function Dashboard() {
     fetchSuggestedRepositories();
   }, []);
 
-  useEffect(() => {
-    if (searchQuery === "") {
-      setSearchResults(repositories);
-    } else {
-      setSearchResults(
-        repositories.filter((repo) => repo.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-  }, [searchQuery, repositories]);
+  const searchResults = searchQuery
+    ? repositories.filter((repo) => repo.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : repositories;
 
   return (
     <>
@@ -85,4 +77,4 @@ function Dashboard() {
   );
 }
 
-export default withAuth(Dashboard);
+export default Dashboard;

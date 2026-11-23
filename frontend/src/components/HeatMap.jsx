@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import HeatMap from "@uiw/react-heat-map";
 
 // Placeholder activity data — this app doesn't track real commit history yet,
@@ -20,16 +20,17 @@ const generateActivityData = (startDate, endDate) => {
   return data;
 };
 
+const oneYearAgo = () => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 1);
+  return date;
+};
+
 const HeatMapProfile = () => {
-  const [activityData, setActivityData] = useState([]);
-
-  useEffect(() => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(startDate.getFullYear() - 1);
-
-    setActivityData(generateActivityData(startDate, endDate));
-  }, []);
+  // Lazy initialisers run once on mount, so the random data stays stable
+  // across re-renders.
+  const [startDate] = useState(oneYearAgo);
+  const [activityData] = useState(() => generateActivityData(startDate, new Date()));
 
   return (
     <div>
@@ -39,7 +40,7 @@ const HeatMapProfile = () => {
         style={{ maxWidth: "700px", height: "200px", color: "white" }}
         value={activityData}
         weekLabels={["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]}
-        startDate={new Date(new Date().setFullYear(new Date().getFullYear() - 1))}
+        startDate={startDate}
         rectSize={15}
         space={3}
         rectProps={{ rx: 2.5 }}

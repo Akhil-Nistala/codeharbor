@@ -1,5 +1,6 @@
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import RequireAuth from "./components/RequireAuth";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -14,13 +15,13 @@ function App() {
       <Router>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
             <Route path="/auth" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/create" element={<CreateRepository />} />
-            <Route path="/repo/:id" element={<RepositoryDetail />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/profile/:id" element={<Profile />} />
+            <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="/create" element={<RequireAuth><CreateRepository /></RequireAuth>} />
+            <Route path="/repo/:id" element={<RequireAuth><RepositoryDetail /></RequireAuth>} />
+            <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+            <Route path="/profile/:id" element={<RequireAuth><Profile /></RequireAuth>} />
           </Routes>
         </AuthProvider>
       </Router>

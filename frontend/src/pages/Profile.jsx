@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import HeatMapProfile from "../components/HeatMap";
-import withAuth from "../utils/withAuth";
-import { apiClient, useAuth } from "../context/AuthContext";
+import apiClient from "../api/client";
+import { useAuth } from "../context/useAuth";
 import "../styles/profile.css";
 
 function Profile() {
@@ -105,4 +105,4 @@ function Profile() {
   );
 }
 
-export default withAuth(Profile);
+export default Profile;

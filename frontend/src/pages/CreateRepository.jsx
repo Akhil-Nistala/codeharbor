@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import withAuth from "../utils/withAuth";
-import { apiClient } from "../context/AuthContext";
+import apiClient from "../api/client";
 import errorMessage from "../utils/errorMessage";
 import "../styles/repo.css";
 
@@ -64,4 +63,4 @@ function CreateRepository() {
   );
 }
 
-export default withAuth(CreateRepository);
+export default CreateRepository;

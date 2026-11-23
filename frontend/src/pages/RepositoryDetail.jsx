@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import withAuth from "../utils/withAuth";
-import { apiClient } from "../context/AuthContext";
+import apiClient from "../api/client";
 import "../styles/repo.css";
 
 function RepositoryDetail() {
@@ -174,4 +173,4 @@ function RepositoryDetail() {
   );
 }
 
-export default withAuth(RepositoryDetail);
+export default RepositoryDetail;

@@ -1,21 +1,7 @@
-import axios from "axios";
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import apiBaseUrl from "../config/api";
-
-const AuthContext = createContext(null);
-
-export const useAuth = () => useContext(AuthContext);
-
-const client = axios.create({ baseURL: `${apiBaseUrl}/api/v1` });
-
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import apiClient from "../api/client";
+import { AuthContext } from "./useAuth";
 
 // A 401 from these means bad credentials, not an expired session, so it
 // should surface as a form error instead of logging the user out.
@@ -26,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const interceptorId = client.interceptors.response.use(
+    const interceptorId = apiClient.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401 && !AUTH_PATHS.includes(error.config?.url)) {
@@ -39,7 +25,7 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
-    return () => client.interceptors.response.eject(interceptorId);
+    return () => apiClient.interceptors.response.eject(interceptorId);
   }, [navigate]);
 
   const storeSession = ({ token, userId }) => {
@@ -49,12 +35,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const handleSignup = async (username, email, password) => {
-    const res = await client.post("/auth/signup", { username, email, password });
+    const res = await apiClient.post("/auth/signup", { username, email, password });
     storeSession(res.data);
   };
 
   const handleLogin = async (email, password) => {
-    const res = await client.post("/auth/login", { email, password });
+    const res = await apiClient.post("/auth/login", { email, password });
     storeSession(res.data);
   };
 
@@ -69,5 +55,3 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export { client as apiClient };

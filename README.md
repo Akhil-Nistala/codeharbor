@@ -76,12 +76,14 @@ codeharbor/
     └── src/
         ├── main.jsx, App.jsx
         ├── config/api.js       # API base URL (same-origin in production builds)
-        ├── context/AuthContext.jsx  # Axios client (JWT interceptor) + signup/login/logout
-        ├── utils/withAuth.jsx  # HOC: redirects to /auth if no token in localStorage
+        ├── api/client.js       # shared Axios instance; attaches the bearer token
+        ├── context/AuthContext.jsx  # AuthProvider: signup/login/logout + 401 handling
+        ├── context/useAuth.js  # the context object + useAuth() hook
         ├── utils/errorMessage.js    # API error -> one display line
         ├── components/
         │   ├── Navbar.jsx
-        │   └── HeatMap.jsx
+        │   ├── HeatMap.jsx
+        │   └── RequireAuth.jsx  # route guard: redirects to /auth when logged out
         ├── pages/
         │   ├── Login.jsx, Signup.jsx
         │   ├── Dashboard.jsx          # "/" — your repos + public repos to browse
@@ -103,7 +105,7 @@ Request bodies are parsed by Zod schemas in `validators/`. Validation failures r
 
 Signup/login (`POST /api/v1/auth/signup`, `POST /api/v1/auth/login`) issue a JWT signed with `JWT_SECRET`, payload `{ id }`, 7-day expiry. Login returns the same `401 "Invalid email or password"` for an unknown email and a wrong password, and compares against a dummy hash when the user doesn't exist so the two cases also take the same time.
 
-The frontend stores the token and `userId` in `localStorage`. An Axios request interceptor (`AuthContext.jsx`) attaches `Authorization: Bearer <token>` to every call; a response interceptor clears storage and redirects to `/auth` on a `401` from any endpoint other than login/signup.
+The frontend stores the token and `userId` in `localStorage`. An Axios request interceptor (`api/client.js`) attaches `Authorization: Bearer <token>` to every call; a response interceptor added by `AuthProvider` clears storage and redirects to `/auth` on a `401` from any endpoint other than login/signup.
 
 Server-side, two middleware variants guard routes:
 
@@ -125,7 +127,7 @@ Coverage across all 20 endpoints:
 | Ownership-based authorization (403 if not owner/self/author) | 7 | `PUT`/`DELETE users/:id`, `PUT`/`DELETE repos/:id`, `PATCH repos/:id/visibility`, `PUT`/`DELETE issues/:id` |
 | Visibility-filtered reads (public/private rules) | 4 | `GET repos`, `GET repos/:id`, `GET repos/name/:name`, `GET repos/user/:userId` |
 
-On the frontend, `withAuth()` is a route-level HOC that redirects to `/auth` if no token is present in `localStorage`. This is a UX guard only — the actual enforcement is the server-side middleware above.
+On the frontend, `<RequireAuth>` wraps the protected routes in `App.jsx` and redirects to `/auth` when no user is logged in. This is a UX guard only — the actual enforcement is the server-side middleware above.
 
 ### Repositories
 
