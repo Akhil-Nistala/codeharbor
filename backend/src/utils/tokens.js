@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-export const ACCESS_TOKEN_TTL = "7d";
+const ACCESS_TOKEN_TTL = "7d";
 
 export const signAccessToken = (user) =>
   jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });

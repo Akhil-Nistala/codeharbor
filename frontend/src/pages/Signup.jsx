@@ -66,7 +66,7 @@ const Signup = () => {
             />
           </div>
 
-          <div className="div">
+          <div>
             <label className="label">Password</label>
             <input
               autoComplete="off"

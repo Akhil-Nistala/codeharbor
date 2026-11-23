@@ -52,7 +52,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="div">
+          <div>
             <label className="label">Password</label>
             <input
               autoComplete="off"
