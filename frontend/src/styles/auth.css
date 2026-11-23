@@ -43,7 +43,7 @@
   gap: 20px;
 }
 
-.input {
+.login-box .input {
   width: 250px;
   height: 35px;
   background-color: #0c1116;
@@ -54,7 +54,7 @@
   color: whitesmoke;
 }
 
-.label {
+.login-box .label {
   display: block;
   margin-bottom: 0.3rem;
   font-size: 0.9rem;
@@ -62,12 +62,12 @@
   color: #f1f6fd;
 }
 
-.input:hover,
-.input:focus {
+.login-box .input:hover,
+.login-box .input:focus {
   border-color: lightblue;
 }
 
-.submit-btn {
+.login-box .submit-btn {
   background-color: #238636;
   border: none;
   width: 250px;
@@ -78,12 +78,12 @@
   padding: 0 1rem;
 }
 
-.submit-btn:hover {
+.login-box .submit-btn:hover {
   background-color: #2ea043;
   cursor: pointer;
 }
 
-.login-btn {
+.login-box .login-btn {
   width: 250px;
 }
 
@@ -102,10 +102,10 @@
   .login-box {
     width: 200px;
   }
-  .input {
+  .login-box .input {
     width: 150px;
   }
-  .login-btn {
+  .login-box .login-btn {
     width: 150px;
   }
   .pass-box {

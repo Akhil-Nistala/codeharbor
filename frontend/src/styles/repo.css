@@ -13,7 +13,7 @@
   max-width: 500px;
 }
 
-.input {
+:is(.create-repo-wrapper, .repo-detail-wrapper) .input {
   width: 100%;
   background-color: #0d1117;
   border: 1px solid #30363d;
@@ -21,6 +21,12 @@
   padding: 8px 10px;
   color: whitesmoke;
   font-size: 14px;
+}
+
+:is(.create-repo-wrapper, .repo-detail-wrapper) .label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: bold;
 }
 
 .textarea {
@@ -35,11 +41,11 @@
   gap: 8px;
 }
 
-.submit-btn {
+:is(.create-repo-wrapper, .repo-detail-wrapper) .submit-btn {
   background-color: #238636;
   align-self: flex-start;
 }
-.submit-btn:hover {
+:is(.create-repo-wrapper, .repo-detail-wrapper) .submit-btn:hover {
   background-color: #2ea043;
 }
 
