@@ -29,14 +29,14 @@ codeharbor/
 │   ├── package.json
 │   ├── jest.config.cjs
 │   ├── src/
-│   │   ├── app.js                        # Express app (middleware + routes), exported — no listen()
+│   │   ├── app.js                        # Express app (CORS, cookies, JSON-only body parsing, routes), exported — no listen()
 │   │   ├── server.js                     # entry point: connects Mongo, starts Express
 │   │   ├── cli.js                        # entry point for the `codeharbor` VCS CLI (yargs)
 │   │   ├── config/
 │   │   │   ├── db.js                     # mongoose.connect wrapper
 │   │   │   └── s3.js                     # lazy S3 client — only constructed when push/pull actually run
 │   │   ├── controllers/
-│   │   │   ├── auth.controller.js        # signup / login
+│   │   │   ├── auth.controller.js        # signup / login / logout / me
 │   │   │   ├── user.controller.js        # profile reads + CRUD / follow toggle
 │   │   │   ├── repo.controller.js        # repository CRUD + visibility
 │   │   │   └── issue.controller.js       # issue CRUD, scoped to a repository
@@ -106,7 +106,7 @@ Signup/login (`POST /api/v1/auth/signup`, `POST /api/v1/auth/login`) sign a JWT 
 
 - `httpOnly`, so page JavaScript can't read it and an XSS bug can't steal it.
 - `Secure` in production (HTTPS only).
-- `SameSite=Lax`, so the browser won't attach it to cross-site POSTs (basic CSRF protection). This works because Vercel proxies `/api` to the backend, which keeps the cookie first-party.
+- `SameSite=Lax`, so the browser won't attach it to cross-site POSTs (see [XSS and CSRF](#xss-and-csrf)). This works because Vercel proxies `/api` to the backend, which keeps the cookie first-party.
 
 The token is never put in a response body. `POST /api/v1/auth/logout` clears the cookie. Because the JWT is stateless, logout can't cancel a copy of the token taken earlier; it stays valid until it expires.
 
@@ -136,6 +136,17 @@ Coverage across all 21 endpoints:
 
 On the frontend, `<RequireAuth>` wraps the protected routes in `App.jsx` and redirects to `/auth` when no user is logged in. This is a UX guard only — the actual enforcement is the server-side middleware above.
 
+### XSS and CSRF
+
+Keeping the token in an httpOnly cookie instead of `localStorage` protects it from **XSS**: injected script can't read it. The trade-off is that browsers attach cookies to requests automatically, which opens the door to **CSRF**: a page on another site making the user's browser send a request to this API with their cookie. Four layers stop that:
+
+1. **`SameSite=Lax` cookie (the main defence).** The browser only sends the cookie on cross-site requests that are top-level `GET` navigations, like clicking a link. A cross-site `POST`, `PUT`, `PATCH` or `DELETE`, whether from a form or `fetch`, arrives without it and gets `401`.
+2. **No `GET` endpoint changes state.** Every write is a `POST`, `PUT`, `PATCH` or `DELETE` (logout included), so the one cross-site request that does carry the cookie can't do anything.
+3. **JSON-only request bodies.** `app.js` registers `express.json()` and no form parser. An HTML form on another site can't send JSON, so a forged form post arrives with an empty body and fails validation.
+4. **Credentialed CORS locked to `CLIENT_ORIGIN`.** A cross-site `fetch` with a JSON body, or with `PUT`/`PATCH`/`DELETE`, triggers a CORS preflight, and only the configured origin passes it. Other sites also can't read any response.
+
+`*.vercel.app` is on the public suffix list, so other Vercel apps count as different sites, not the same site.
+
 ### Repositories
 
 `POST /api/v1/repos` sets `owner` from `req.userId` (never from the request body), defaults `visibility` to `true`, and enforces repository-name uniqueness **per owner** via a compound Mongoose index (`{ owner, name }`) rather than globally; a duplicate returns `409`.
@@ -156,7 +167,7 @@ Issues are created and listed under their repository (`POST`/`GET /api/v1/repos/
 
 - `init` — creates a `.codeharbor/` metadata folder in the current directory.
 - `add <file>` — copies a file into a staging area.
-- `commit <message>` — snapshots staged files into a UUID-named commit folder alongside a `commit.json` (message + timestamp).
+- `commit <message>` — snapshots staged files into a UUID-named commit folder alongside a `commit.json` (message + timestamp), then empties the staging area so the next commit only contains files added after this one. With nothing staged it prints a message and creates nothing.
 - `push` / `pull` — sync commit folders with an S3 bucket via `@aws-sdk/client-s3`. The S3 client is constructed lazily and only when these commands run, so the web API has no AWS dependency; `push`/`pull` fail with a clear error if `S3_BUCKET` isn't configured.
 - `revert <commitID>` — copies a past commit's files back into the working directory.
 
@@ -235,7 +246,7 @@ npm run dev            # runs both apps together (backend :3002, frontend :5173)
 
 Or run each independently: `cd backend && npm install && npm run dev` / `cd frontend && npm install && npm run dev`.
 
-**Using the CLI:** `cd backend && npm install && node src/cli.js init` (run from whatever directory you want to version — it creates `.codeharbor/` there). `npm run cli -- <command>` also works from within `backend/`.
+**Using the CLI:** run `node <path-to>/backend/src/cli.js <command>` from the directory you want to version; `init` creates `.codeharbor/` there. `npm run cli -- <command>` always runs inside `backend/`, so it versions that folder instead. The CLI loads `.env` from the current directory, so for `push`/`pull` either run it where an `.env` with the AWS variables exists or export those variables in your shell.
 
 ## Testing
 
@@ -255,6 +266,7 @@ The frontend has no unit tests; `npm run build` and `npm run lint` in `frontend/
 ## Known limitations
 
 - **JWTs are not revocable.** They're stateless by design: no server-side session store, no logout-everywhere. Logout clears the cookie in that browser, but a copied token stays valid until it expires (7 days) or `JWT_SECRET` changes. Short-lived access tokens with refresh tokens, or a database-backed session, would fix that.
+- **Body-less POSTs rely on SameSite alone.** `POST /auth/logout` takes no body, so the JSON-only rule doesn't apply to it; only `SameSite=Lax` stops a forged one (harmless here, it just logs the user out). If `COOKIE_SAMESITE` were ever set to `none`, an `Origin` header check on write requests would be needed to keep CSRF protection airtight.
 - **The CLI and the web app are independent.** CLI commits are local file snapshots (optionally synced to S3); they are not linked to a `Repository` document in MongoDB. There is no current path from "I ran `codeharbor commit`" to "this shows up on my CodeHarbor repo page."
 - **Commits are whole-file copies, not a content-addressed object store.** There is no diffing, no tree/blob model, and no branching — the CLI demonstrates version-control ergonomics rather than implementing Git's data model.
 - **The contribution heatmap is illustrative.** There is no activity-tracking pipeline; it renders randomly generated data over a real rolling 12-month window rather than a user's actual history.
