@@ -10,7 +10,7 @@ This README documents the system's architecture and contracts so it can be under
 | --- | --- |
 | Frontend | React 19, Vite, React Router 7, Axios |
 | Backend | Node.js (ES modules), Express 4, Mongoose 8 (MongoDB), Zod request validation |
-| Auth | JWT (7-day expiry) + bcrypt-hashed passwords |
+| Auth | 15-minute JWT access tokens + rotating refresh tokens (httpOnly cookie), bcrypt-hashed passwords |
 | CLI / VCS simulation | Node.js + yargs, AWS SDK v3 (`@aws-sdk/client-s3`) for push/pull |
 | Tests | Jest + Supertest (model layer mocked) |
 | Deployment | Render (API, `render.yaml`) + Vercel (frontend, `frontend/vercel.json`) |
@@ -49,7 +49,8 @@ codeharbor/
 │   │   ├── models/
 │   │   │   ├── user.model.js
 │   │   │   ├── repo.model.js
-│   │   │   └── issue.model.js
+│   │   │   ├── issue.model.js
+│   │   │   └── refreshToken.model.js     # hashed refresh tokens, grouped by login (family)
 │   │   ├── routes/
 │   │   │   ├── auth.routes.js            # /api/v1/auth
 │   │   │   ├── user.routes.js            # /api/v1/users
@@ -58,7 +59,7 @@ codeharbor/
 │   │   ├── utils/
 │   │   │   ├── ApiError.js               # Error subclass carrying an HTTP status
 │   │   │   ├── asyncHandler.js           # forwards async errors to the error handler
-│   │   │   └── tokens.js                 # sign/verify JWTs, read the bearer token
+│   │   │   └── tokens.js                 # access JWTs, refresh tokens + their cookie
 │   │   ├── validators/                   # Zod schemas: auth, user, repo, issue
 │   │   └── vcs/                          # the local git-like CLI, separate from the web API
 │   │       └── init.js, add.js, commit.js, push.js, pull.js, revert.js
@@ -75,8 +76,8 @@ codeharbor/
     └── src/
         ├── main.jsx, App.jsx
         ├── config/api.js       # API base URL (same-origin in production builds)
-        ├── api/client.js       # shared Axios instance; attaches the bearer token
-        ├── context/AuthContext.jsx  # AuthProvider: signup/login/logout + 401 handling
+        ├── api/client.js       # shared Axios instance; bearer token + single-flight refresh
+        ├── context/AuthContext.jsx  # AuthProvider: signup/login/logout + refresh-and-retry on 401
         ├── context/useAuth.js  # the context object + useAuth() hook
         ├── utils/errorMessage.js    # API error -> one display line
         ├── components/
@@ -102,9 +103,16 @@ Request bodies are parsed by Zod schemas in `validators/`. Validation failures r
 
 ### Authentication
 
-Signup/login (`POST /api/v1/auth/signup`, `POST /api/v1/auth/login`) issue a JWT signed with `JWT_SECRET`, payload `{ id }`, 7-day expiry. Login returns the same `401 "Invalid email or password"` for an unknown email and a wrong password, and compares against a dummy hash when the user doesn't exist so the two cases also take the same time.
+Signup/login (`POST /api/v1/auth/signup`, `POST /api/v1/auth/login`) start a session with two tokens:
 
-The frontend stores the token and `userId` in `localStorage`. An Axios request interceptor (`api/client.js`) attaches `Authorization: Bearer <token>` to every call; a response interceptor added by `AuthProvider` clears storage and redirects to `/auth` on a `401` from any endpoint other than login/signup.
+- **Access token:** a JWT signed with `JWT_SECRET`, payload `{ id }`, 15-minute expiry. Returned in the response body and sent as `Authorization: Bearer <token>`.
+- **Refresh token:** 48 random bytes, valid for 7 days, set as an `httpOnly` cookie scoped to `/api/v1/auth` so JavaScript can't read it and it isn't sent with other API calls. Only its SHA-256 hash is stored, in the `RefreshToken` collection (a TTL index deletes expired ones).
+
+`POST /api/v1/auth/refresh` exchanges the cookie for a new access token and **rotates** the refresh token: the old one is revoked and a new one is issued in the same `family` (every token descended from one login). If an already-revoked token is presented again, someone else has a copy, so the whole family is revoked and both parties are logged out. A conditional update makes the revoke atomic, so two concurrent refreshes with the same token can't both succeed. `POST /api/v1/auth/logout` revokes the family and clears the cookie; it works even with an expired access token.
+
+Login returns the same `401 "Invalid email or password"` for an unknown email and a wrong password, and compares against a dummy hash when the user doesn't exist so the two cases also take the same time.
+
+The frontend stores the access token and `userId` in `localStorage`; the refresh token never leaves the cookie. An Axios request interceptor (`api/client.js`) attaches the bearer token to every call. When a request gets a `401`, the response interceptor added by `AuthProvider` calls `/auth/refresh` once and replays the request. Parallel 401s share one refresh call, since refresh tokens are single-use. If the refresh fails, it clears storage and redirects to `/auth`.
 
 Server-side, two middleware variants guard routes:
 
@@ -117,11 +125,11 @@ Authorization is a separate layer on top of authentication:
 - `requireSelf(param)` — rejects with `403` unless the route param matches `req.userId`. Used on profile update/delete.
 - Issue update/delete checks live in `issue.controller.js` (`canModifyIssue`): the caller must be either the issue's `author` or the owner of its parent repository.
 
-Coverage across all 20 endpoints:
+Coverage across all 22 endpoints:
 
 | Protection level | Count | Endpoints |
 | --- | --- | --- |
-| Public, no auth | 6 | `auth/signup`, `auth/login`, `GET users`, `GET users/:id`, `GET repos/:id/issues`, `GET issues/:id` |
+| Public, no auth | 8 | `auth/signup`, `auth/login`, `auth/refresh`, `auth/logout` (these two use the cookie), `GET users`, `GET users/:id`, `GET repos/:id/issues`, `GET issues/:id` |
 | Requires login only (no ownership check) | 3 | `PATCH users/:id/follow`, `POST repos`, `POST repos/:id/issues` |
 | Ownership-based authorization (403 if not owner/self/author) | 7 | `PUT`/`DELETE users/:id`, `PUT`/`DELETE repos/:id`, `PATCH repos/:id/visibility`, `PUT`/`DELETE issues/:id` |
 | Visibility-filtered reads (public/private rules) | 4 | `GET repos`, `GET repos/:id`, `GET repos/name/:name`, `GET repos/user/:userId` |
@@ -160,8 +168,10 @@ All endpoints are under `/api/v1`. `GET /health` (outside the prefix) is the hea
 
 | Method | Path | Auth | Body | Notes |
 | --- | --- | --- | --- | --- |
-| POST | `/auth/signup` | — | `{ username, email, password }` | `201 { token, userId }`; `409` if username/email taken; `400` on invalid input |
-| POST | `/auth/login` | — | `{ email, password }` | `200 { token, userId }`; `401` on bad credentials |
+| POST | `/auth/signup` | — | `{ username, email, password }` | `201 { token, userId }` + refresh cookie; `409` if username/email taken; `400` on invalid input |
+| POST | `/auth/login` | — | `{ email, password }` | `200 { token, userId }` + refresh cookie; `401` on bad credentials |
+| POST | `/auth/refresh` | Refresh cookie | — | `200 { token, userId }` + rotated cookie; `401` if missing, invalid, expired or reused |
+| POST | `/auth/logout` | Refresh cookie (optional) | — | `200`; revokes the login's refresh tokens and clears the cookie |
 | GET | `/users` | — | — | Returns `username`, `email`, `createdAt` only |
 | GET | `/users/:id` | — | — | Password excluded (schema-level `select: false`) |
 | PUT | `/users/:id` | required, self only | `{ email?, password? }` | |
@@ -191,7 +201,9 @@ Malformed ids in `:id`/`:userId` return `400` rather than a database cast error.
 
 **Issue** — `{ title, description, status: "open"|"closed", repository (ref Repository), author (ref User) }`
 
-All three use Mongoose `timestamps: true`.
+**RefreshToken** — `{ user (ref User), tokenHash (SHA-256, unique), family, expiresAt (TTL index), revokedAt }`
+
+All four use Mongoose `timestamps: true`.
 
 ## Environment variables
 
@@ -201,7 +213,8 @@ All three use Mongoose `timestamps: true`.
 | --- | --- | --- |
 | `PORT` | `3002` | API server port |
 | `MONGO_URI` | *(required)* | MongoDB connection string |
-| `CLIENT_ORIGIN` | `*` | Allowed CORS origin |
+| `CLIENT_ORIGIN` | request origin | Allowed CORS origin (credentialed, so it can't be `*`) |
+| `COOKIE_SAMESITE` | `lax` in dev, `none` in production | `SameSite` for the refresh cookie; `render.yaml` sets `lax` because Vercel proxies `/api` on the same site |
 | `JWT_SECRET` | *(required)* | Signing secret for auth tokens — server refuses to start without it |
 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET` | — | Only needed for the CLI's `push`/`pull` commands |
 
@@ -232,7 +245,7 @@ Or run each independently: `cd backend && npm install && npm run dev` / `cd fron
 cd backend && npm test
 ```
 
-Jest + Supertest, with the Mongoose models replaced by mocks (`tests/support/mockModels.js`), so the suite needs no database. It covers the HTTP contract: signup/login (hashing, duplicate and invalid input, identical 401s), the auth guard on every protected route, owner-from-token on create, the visibility rules, owner/self/author authorization, issue creation and status changes, follow toggling, malformed-id handling, and the JSON 404.
+Jest + Supertest, with the Mongoose models replaced by mocks (`tests/support/mockModels.js`), so the suite needs no database. It covers the HTTP contract: signup/login (hashing, duplicate and invalid input, identical 401s), refresh tokens (httpOnly cookie, hash-only storage, rotation, expiry, reuse detection, concurrent-refresh race, logout), the auth guard on every protected route, owner-from-token on create, the visibility rules, owner/self/author authorization, issue creation and status changes, follow toggling, malformed-id handling, and the JSON 404.
 
 The frontend has no unit tests; `npm run build` and `npm run lint` in `frontend/` are the checks.
 
@@ -243,7 +256,8 @@ The frontend has no unit tests; `npm run build` and `npm run lint` in `frontend/
 
 ## Known limitations
 
-- **JWTs are not revocable.** They're stateless by design — no server-side session store, no logout-everywhere, no refresh-token rotation. A token is valid until it expires (7 days) or the process's `JWT_SECRET` changes.
+- **Access tokens can't be revoked early.** Logout revokes the refresh token, but an already-issued access token stays valid until it expires (at most 15 minutes). There is no "log out of all devices" endpoint yet, though the `RefreshToken` collection makes one a single `updateMany` by user.
+- **The access token lives in `localStorage`.** An XSS bug could read it (but not the httpOnly refresh token). The short expiry limits the damage.
 - **The CLI and the web app are independent.** CLI commits are local file snapshots (optionally synced to S3); they are not linked to a `Repository` document in MongoDB. There is no current path from "I ran `codeharbor commit`" to "this shows up on my CodeHarbor repo page."
 - **Commits are whole-file copies, not a content-addressed object store.** There is no diffing, no tree/blob model, and no branching — the CLI demonstrates version-control ergonomics rather than implementing Git's data model.
 - **The contribution heatmap is illustrative.** There is no activity-tracking pipeline; it renders randomly generated data over a real rolling 12-month window rather than a user's actual history.

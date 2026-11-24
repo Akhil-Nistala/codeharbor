@@ -22,17 +22,27 @@ const modelMock = () => ({
   findById: jest.fn(),
   findByIdAndUpdate: jest.fn(),
   findByIdAndDelete: jest.fn(),
+  findOneAndUpdate: jest.fn(),
+  updateMany: jest.fn(),
   create: jest.fn(),
   updateOne: jest.fn()
 });
 
 // Must be called before the app is imported, so its imports pick up the mocks.
 export const mockModels = () => {
-  const models = { User: modelMock(), Repository: modelMock(), Issue: modelMock() };
+  const models = {
+    User: modelMock(),
+    Repository: modelMock(),
+    Issue: modelMock(),
+    RefreshToken: modelMock()
+  };
 
   jest.unstable_mockModule(src("models/user.model.js"), () => ({ User: models.User }));
   jest.unstable_mockModule(src("models/repo.model.js"), () => ({ Repository: models.Repository }));
   jest.unstable_mockModule(src("models/issue.model.js"), () => ({ Issue: models.Issue }));
+  jest.unstable_mockModule(src("models/refreshToken.model.js"), () => ({
+    RefreshToken: models.RefreshToken
+  }));
 
   return models;
 };

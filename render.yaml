@@ -14,6 +14,10 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      # The frontend proxies /api (see frontend/vercel.json), so the refresh
+      # cookie is same-site.
+      - key: COOKIE_SAMESITE
+        value: lax
       # Set these in the Render dashboard when creating the service.
       - key: MONGO_URI
         sync: false
