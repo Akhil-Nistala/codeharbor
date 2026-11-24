@@ -8,14 +8,15 @@ const { Issue, Repository, User } = models;
 
 const request = (await import("supertest")).default;
 const { default: app } = await import("../src/app.js");
-const { signAccessToken } = await import("../src/utils/tokens.js");
+const { signSessionToken } = await import("../src/utils/tokens.js");
 
 const OWNER_ID = "64b000000000000000000001";
 const STRANGER_ID = "64b000000000000000000002";
 const REPO_ID = "64b0000000000000000000aa";
 const ISSUE_ID = "64b0000000000000000000bb";
 
-const auth = (userId) => ({ Authorization: `Bearer ${signAccessToken({ _id: userId })}` });
+// The session JWT travels in the httpOnly "token" cookie.
+const auth = (userId) => ({ Cookie: `token=${signSessionToken({ _id: userId })}` });
 
 const repoDoc = (overrides = {}) => ({
   _id: REPO_ID,
@@ -53,7 +54,7 @@ describe("auth guard", () => {
   it("rejects a forged token", async () => {
     const res = await request(app)
       .post("/api/v1/repos")
-      .set("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IngifQ.bad")
+      .set("Cookie", "token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IngifQ.bad")
       .send({ name: "notes" });
 
     expect(res.status).toBe(401);

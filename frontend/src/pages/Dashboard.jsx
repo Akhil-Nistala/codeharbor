@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/useAuth";
 import "../styles/dashboard.css";
 
 function Dashboard() {
+  const { currentUser } = useAuth();
   const [repositories, setRepositories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestedRepositories, setSuggestedRepositories] = useState([]);
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-
     const fetchRepositories = async () => {
       try {
-        const response = await apiClient.get(`/repos/user/${userId}`);
+        const response = await apiClient.get(`/repos/user/${currentUser}`);
         setRepositories(response.data.repositories ?? []);
       } catch (err) {
         console.error("Error fetching repositories:", err);
@@ -32,7 +32,7 @@ function Dashboard() {
 
     fetchRepositories();
     fetchSuggestedRepositories();
-  }, []);
+  }, [currentUser]);
 
   const searchResults = searchQuery
     ? repositories.filter((repo) => repo.name.toLowerCase().includes(searchQuery.toLowerCase()))

@@ -14,7 +14,7 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
-      # The frontend proxies /api (see frontend/vercel.json), so the refresh
+      # The frontend proxies /api (see frontend/vercel.json), so the auth
       # cookie is same-site.
       - key: COOKIE_SAMESITE
         value: lax

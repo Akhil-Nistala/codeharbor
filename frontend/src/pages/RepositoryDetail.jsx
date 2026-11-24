@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/useAuth";
 import "../styles/repo.css";
 
 function RepositoryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const currentUser = localStorage.getItem("userId");
+  const { currentUser } = useAuth();
 
   const [repository, setRepository] = useState(null);
   const [notFound, setNotFound] = useState(false);
